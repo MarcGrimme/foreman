@@ -1,5 +1,4 @@
 <% new = f.object && f.object.new? -%>
-<% debugger %>
 <% interfacetypes = compute_resource.hardware_profile(f.object.guest_id).interfacetypes.map do | interfacetype | Fog.class_from_string(interfacetype.name) end %>
 <%= select_f f, :guest_id, compute_resource.hardware_profiles, :id, :fullname, {},
              { :disabled    => !new, :'data-url' => hardware_profile_selected_compute_resource_path(compute_resource),
