@@ -2,7 +2,20 @@
   <% if (networks = compute_resource.networks).any? -%>
     <%= selectable_f f, :network, networks, { },
                      :class       => "span2",
-                     :label       => "Network",
-                     :help_inline => remove_child_link("X", f, { :method => :'_delete', :title => 'remove network interface', :class => 'label label-important' }) %>
+                     :label       => "Network" %>
+  <% end -%>
+  <% if f.object.respond_to? :mac %>
+  <!-- change mac is not tested so disable for the first -->
+  <%= text_f f, :mac, :hide => newmachine, :disabled => true %>
+  <!-- change name is not tested so disable for the first -->
+  <%= text_f f, :name, :hide => newmachine, :disabled => !newmachine %>
+  <% end %>
+  <% if interfacetypes.any? -%>
+    <%= select_f f, :type, interfacetypes, :to_s, :to_s, { },
+                     :disabled    => !newmachine,
+                     :class       => "span2",
+                     :id          => "interfacetypes",
+                     :label       => "Interface Type",
+                     :help_inline => remove_child_link("X", f, { :method => :'_delete', :title => 'remove interface type', :class => 'label label-important'}) %>
   <% end -%>
 </div>
