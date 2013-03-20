@@ -18,7 +18,6 @@
       :object  => compute_resource.new_interface,
       :partial => 'compute_resources_vms/form/vmware/network', :form_builder_attrs => { :compute_resource => compute_resource, :interfacetypes => interfacetypes, :newmachine => new } }) %>
   <%= field_set_tag "Network interfaces", :id => "network_interfaces", :title => 'Networks' do -%>
-    <% debugger %>
     <%= f.fields_for :interfaces do |i| %>
       <%= render 'compute_resources_vms/form/vmware/network', :f => i, :compute_resource => compute_resource, :interfacetypes => interfacetypes, :newmachine => new  %>
     <% end -%>
