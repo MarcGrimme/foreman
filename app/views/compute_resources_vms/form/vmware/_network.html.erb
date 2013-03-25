@@ -4,12 +4,10 @@
                      :class       => "span2",
                      :label       => "Network" %>
   <% end -%>
-  <% if f.object.respond_to? :mac %>
   <!-- change mac is not tested so disable for the first -->
-  <%= text_f f, :mac, :hide => newmachine, :disabled => true %>
+  <%= text_f f, :mac, :hidden => newmachine, :disabled => true unless not !newmachine and f.object.respond_to? :mac%>
   <!-- change name is not tested so disable for the first -->
-  <%= text_f f, :name, :hide => newmachine, :disabled => !newmachine %>
-  <% end %>
+  <%= text_f f, :name, :disabled => true unless not !newmachine and f.object.respond_to? :name %>
   <% if interfacetypes.any? -%>
     <%= select_f f, :type, interfacetypes, :to_s, :to_s, { },
                      :disabled    => !newmachine,
