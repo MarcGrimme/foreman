@@ -117,16 +117,6 @@ class UsersController < ApplicationController
     redirect_to login_users_path
   end
 
-  def auth_source_selected
-    render :update do |page|
-      if params[:auth_source_id] and AuthSource.find(params[:auth_source_id]).can_set_password?
-        page['#password'].show
-      else
-        page['#password'].hide
-      end
-    end
-  end
-
   private
 
   def authorize(ctrl = params[:controller], action = params[:action])
@@ -150,7 +140,7 @@ class UsersController < ApplicationController
   end
 
   def update_hostgroups_owners(hostgroup_ids)
-    subhostgroups = Hostgroup.where(:id => hostgroup_ids).map(&:subtree).flatten
+    subhostgroups = Hostgroup.where(:id => hostgroup_ids).map(&:subtree).flatten.reject { |hg| hg.users.include?(@user) }
     subhostgroups.each { |subhs| subhs.users << @user }
   end
 

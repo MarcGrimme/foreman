@@ -6,7 +6,7 @@ class User < ActiveRecord::Base
   include Foreman::ThreadSession::UserModel
   include Taxonomix
   audited :except => [:last_login_on, :password, :password_hash, :password_salt, :password_confirmation]
-  self.auditing_enabled = !defined?(Rake)
+  self.auditing_enabled = !(File.basename($0) == "rake" && ARGV.include?("db:migrate"))
 
   attr_protected :password_hash, :password_salt, :admin
   attr_accessor :password, :password_confirmation, :editing_self
@@ -21,7 +21,8 @@ class User < ActiveRecord::Base
   has_many :roles, :through => :user_roles
   has_and_belongs_to_many :compute_resources, :join_table => "user_compute_resources"
   has_and_belongs_to_many :domains,           :join_table => "user_domains"
-  has_and_belongs_to_many :hostgroups,        :join_table => "user_hostgroups"
+  has_many :user_hostgroups
+  has_many :hostgroups, :through => :user_hostgroups
   has_many :user_facts, :dependent => :destroy
   has_many :facts, :through => :user_facts, :source => :fact_name
 

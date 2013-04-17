@@ -1,6 +1,8 @@
 class Host::Managed < Host::Base
   include Authorization
   include ReportCommon
+  include Hostext::Search
+
   has_many :host_classes, :dependent => :destroy, :foreign_key => :host_id
   has_many :puppetclasses, :through => :host_classes
   belongs_to :hostgroup
@@ -57,32 +59,13 @@ class Host::Managed < Host::Base
       org = Organization.current
       loc = Location.current
       conditions = {}
-      conditions[:organization_id] = org.id if org
-      conditions[:location_id]     = loc.id if loc
+      conditions[:organization_id] = Array.wrap(org).map(&:id) if org
+      conditions[:location_id]     = Array.wrap(loc).map(&:id) if loc
       where(conditions)
     }
 
   scope :recent,      lambda { |*args| {:conditions => ["last_report > ?", (args.first || (Setting[:puppet_interval] + 5).minutes.ago)]} }
   scope :out_of_sync, lambda { |*args| {:conditions => ["last_report < ? and enabled != ?", (args.first || (Setting[:puppet_interval] + 5).minutes.ago), false]} }
-
-  scope :with_fact, lambda { |fact,value|
-    if fact.nil? or value.nil?
-      raise "invalid fact"
-    else
-      { :joins  => "INNER JOIN fact_values fv_#{fact} ON fv_#{fact}.host_id = hosts.id
-                   INNER JOIN fact_names fn_#{fact}  ON fn_#{fact}.id      = fv_#{fact}.fact_name_id",
-        :select => "DISTINCT hosts.name, hosts.id", :conditions =>
-          ["fv_#{fact}.value = ? and fn_#{fact}.name = ? and fv_#{fact}.fact_name_id = fn_#{fact}.id", value, fact] }
-    end
-  }
-
-  scope :with_class, lambda { |klass|
-    if klass.nil?
-      raise "invalid class"
-    else
-      { :joins => :puppetclasses, :select => "hosts.name", :conditions => { :puppetclasses => { :name => klass } } }
-    end
-  }
 
   scope :with_os, lambda { where('hosts.operatingsystem_id IS NOT NULL') }
   scope :no_location, lambda { where(:location_id => nil) }
@@ -423,11 +406,11 @@ class Host::Managed < Host::Base
     case facts
       when Puppet::Node::Facts
         certname = facts.values["certname"]
-        name     = facts.values["fqdn"]
+        name     = facts.values["fqdn"].downcase
         values   = facts.values
       when Hash
         certname = facts["certname"]
-        name     = facts["fqdn"]
+        name     = facts["fqdn"].downcase
         values   = facts
         return raise("invalid facts hash") unless name and values
       else
@@ -519,10 +502,10 @@ class Host::Managed < Host::Base
   # e.g. how many hosts belongs to each os
   # returns sorted hash
   def self.count_distribution assocication
-    output = {}
+    output = []
     count(:group => assocication).each do |k,v|
       begin
-        output[k.to_label] = v unless v == 0
+        output << {:label => k.to_label, :data => v }  unless v == 0
       rescue
         logger.info "skipped #{k} as it has has no label"
       end
@@ -535,34 +518,9 @@ class Host::Managed < Host::Base
   # e.g. how many hosts belongs to each os
   # returns sorted hash
   def self.count_habtm association
-    output = {}
-    counter = Host.count(:include => association.pluralize, :group => "#{association}_id")
-    # returns {:id => count...}
+    counter = Host::Managed.joins(association.tableize.to_sym).group("#{association.tableize.to_sym}.id").count
     #Puppetclass.find(counter.keys.compact)...
-    Hash[eval(association.camelize).send(:find, counter.keys.compact).map {|i| [i.to_label, counter[i.id]]}]
-  end
-
-  def resources_chart(timerange = 1.day.ago)
-    data = {}
-    data[:applied], data[:failed], data[:restarted], data[:failed_restarts], data[:skipped] = [],[],[],[],[]
-    reports.recent(timerange).each do |r|
-      data[:applied]         << [r.reported_at.to_i*1000, r.applied ]
-      data[:failed]          << [r.reported_at.to_i*1000, r.failed ]
-      data[:restarted]       << [r.reported_at.to_i*1000, r.restarted ]
-      data[:failed_restarts] << [r.reported_at.to_i*1000, r.failed_restarts ]
-      data[:skipped]         << [r.reported_at.to_i*1000, r.skipped ]
-    end
-    data
-  end
-
-  def runtime_chart(timerange = 1.day.ago)
-    data = {}
-    data[:config], data[:runtime] = [], []
-    reports.recent(timerange).each do |r|
-      data[:config]  << [r.reported_at.to_i*1000, r.config_retrieval]
-      data[:runtime] << [r.reported_at.to_i*1000, r.runtime]
-    end
-    data
+    association.camelize.constantize.find(counter.keys.compact).map {|i| {:label=>i.to_label, :data =>counter[i.id]}}
   end
 
   def classes_from_storeconfigs
@@ -611,7 +569,7 @@ class Host::Managed < Host::Base
   end
 
   def set_ip_address
-    self.ip ||= subnet.unused_ip if subnet if SETTINGS[:unattended] and (new_record? or managed?)
+    self.ip ||= subnet.unused_ip if subnet and SETTINGS[:unattended] and (new_record? or managed?)
   end
 
   # returns a rundeck output
@@ -836,8 +794,8 @@ class Host::Managed < Host::Base
       end
     end if SETTINGS[:unattended] and managed? and os and capabilities.include?(:build)
 
-    puppetclasses.uniq.each do |e|
-      unless environment.puppetclasses.include?(e)
+    puppetclasses.select("puppetclasses.id,puppetclasses.name").uniq.each do |e|
+      unless environment.puppetclasses.map(&:id).include?(e.id)
         errors.add(:puppetclasses, "#{e} does not belong to the #{environment} environment")
         status = false
       end

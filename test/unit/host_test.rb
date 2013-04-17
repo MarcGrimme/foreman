@@ -65,6 +65,11 @@ class HostTest < ActiveSupport::TestCase
     assert Host.importHostAndFacts(File.read(File.expand_path(File.dirname(__FILE__) + "/facts.yml")))
   end
 
+  test "should downcase fqdn facts from yaml of a new host" do
+    assert Host.importHostAndFacts(File.read(File.expand_path(File.dirname(__FILE__) + "/facts_with_caps.yml")))
+    assert Host.find_by_name('a.server.b.domain')
+  end
+
   test "should not save if neither ptable or disk are defined when the host is managed" do
     if unattended?
       host = Host.create :name => "myfullhost", :mac => "aabbecddeeff", :ip => "2.4.4.03",
@@ -332,8 +337,8 @@ class HostTest < ActiveSupport::TestCase
  test "custom_disk_partition_with_erb" do
    h = hosts(:one)
    h.disk = "<%= 1 + 1 %>"
-   h.save
-
+   assert h.save
+   assert h.disk.present?
    assert_equal "2", h.diskLayout
  end
 
@@ -374,7 +379,7 @@ class HostTest < ActiveSupport::TestCase
 
     pc = puppetclasses(:two)
     h.puppetclasses << pc
-    assert !h.environment.puppetclasses.include?(pc)
+    assert !h.environment.puppetclasses.map(&:id).include?(pc.id)
     assert !h.valid?
     assert_equal ["#{pc} does not belong to the #{h.environment} environment"], h.errors[:puppetclasses]
   end

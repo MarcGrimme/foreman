@@ -65,13 +65,13 @@ class HostsControllerTest < ActionController::TestCase
         :host => {:name => "myotherfullhost",
           :mac => "aabbecddee06",
           :ip => "2.3.4.125",
-          :domain => domains(:mydomain),
-          :operatingsystem => operatingsystems(:redhat),
-          :architecture => architectures(:x86_64),
-          :environment => environments(:production),
-          :subnet => subnets(:one),
+          :domain_id => domains(:mydomain).id,
+          :operatingsystem_id => operatingsystems(:redhat).id,
+          :architecture_id => architectures(:x86_64).id,
+          :environment_id => environments(:production).id,
+          :subnet_id => subnets(:one).id,
           :disk => "empty partition",
-          :puppet_proxy => smart_proxies(:puppetmaster)
+          :puppet_proxy_id => smart_proxies(:puppetmaster).id
         }
       }, set_session_user
     end
@@ -82,16 +82,15 @@ class HostsControllerTest < ActionController::TestCase
     assert_difference 'Host.count' do
       post :create, { :format => "json", :commit => "Create",
         :host => {:name => "myotherfullhost",
-          :mac => "aabbecddee06",
+          :mac => "e4:1f:22:cc:36:55",
           :ip => "2.3.4.125",
-          :domain => domains(:mydomain),
-          :operatingsystem => operatingsystems(:redhat),
-          :architecture => architectures(:x86_64),
-          :environment => environments(:production),
-          :subnet => subnets(:one),
+          :domain_id => domains(:mydomain).id,
+          :operatingsystem_id => operatingsystems(:redhat).id,
+          :architecture_id => architectures(:x86_64).id,
+          :environment_id => environments(:production).id,
+          :subnet_id => subnets(:one).id,
           :disk => "empty partition",
-          :puppet_proxy => smart_proxies(:puppetmaster)
-
+          :puppet_proxy_id => smart_proxies(:puppetmaster).id
         }
       }, set_session_user
     end
@@ -148,12 +147,14 @@ class HostsControllerTest < ActionController::TestCase
   end
 
   test "externalNodes should render correctly when format text/html is given" do
+    Resolv.any_instance.stubs(:getnames).returns(['else.where'])
     get :externalNodes, {:name => @host.name}, set_session_user
     assert_response :success
     assert_template :text => @host.info.to_yaml.gsub("\n","<br/>")
   end
 
   test "externalNodes should render yml request correctly" do
+    Resolv.any_instance.stubs(:getnames).returns(['else.where'])
     get :externalNodes, {:name => @host.name, :format => "yml"}, set_session_user
     assert_response :success
     assert_template :text => @host.info.to_yaml
@@ -581,6 +582,21 @@ class HostsControllerTest < ActionController::TestCase
     assert_response :success
   end
 
+  test 'hosts in trusted hosts list and SSL cert should get externalNodes successfully' do
+    SmartProxy.delete_all
+    User.current = nil
+    Setting[:restrict_registered_puppetmasters] = true
+    Setting[:require_ssl_puppetmasters] = true
+    Setting[:trusted_puppetmaster_hosts] = ['else.where']
+
+    @request.env['HTTPS'] = 'on'
+    @request.env['SSL_CLIENT_S_DN'] = 'CN=else.where'
+    @request.env['SSL_CLIENT_VERIFY'] = 'SUCCESS'
+    Resolv.any_instance.stubs(:getnames).returns(['else.where'])
+    get :externalNodes, {:name => @host.name, :format => "yml"}
+    assert_response :success
+  end
+
   test 'hosts without a registered smart proxy but with an SSL cert should not be able to get externalNodes' do
     User.current = nil
     Setting[:restrict_registered_puppetmasters] = true
@@ -782,14 +798,14 @@ class HostsControllerTest < ActionController::TestCase
   test "can change sti type to valid subtype" do
     class Host::Valid < Host::Base ; end
     put :update, { :commit => "Update", :id => @host.name, :host => {:type => "Host::Valid"} }, set_session_user
-    @host = Host.find(@host)
+    @host = Host.find(@host.id)
     assert_equal "Host::Valid", @host.type
   end
 
   test "cannot change sti type to invalid subtype" do
     old_type = @host.type
     put :update, { :commit => "Update", :id => @host.name, :host => {:type => "Host::Notvalid"} }, set_session_user
-    @host = Host.find(@host)
+    @host = Host.find(@host.id)
     assert_equal old_type, @host.type
   end
 
@@ -800,13 +816,13 @@ class HostsControllerTest < ActionController::TestCase
     @host = Host.create(:name => "myfullhost",
                         :mac             => "aabbecddeeff",
                         :ip              => "2.3.4.99",
-                        :domain          => domains(:mydomain),
-                        :operatingsystem => operatingsystems(:redhat),
-                        :architecture    => architectures(:x86_64),
-                        :environment     => environments(:production),
-                        :subnet          => subnets(:one),
+                        :domain_id          => domains(:mydomain).id,
+                        :operatingsystem_id => operatingsystems(:redhat).id,
+                        :architecture_id    => architectures(:x86_64).id,
+                        :environment_id     => environments(:production).id,
+                        :subnet_id          => subnets(:one).id,
                         :disk            => "empty partition",
-                        :puppet_proxy    => smart_proxies(:puppetmaster)
+                        :puppet_proxy_id    => smart_proxies(:puppetmaster).id
                        )
   end
 end
