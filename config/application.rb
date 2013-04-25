@@ -32,6 +32,8 @@ module Foreman
     # Custom directories with classes and modules you want to be autoloadable.
     # config.autoload_paths += %W(#{config.root}/extras)
     config.autoload_paths += %W(#{config.root}/lib)
+    config.autoload_paths += Dir["#{config.root}/app/controllers/concerns"]
+    config.autoload_paths += Dir["/home/marc/src/ruby/fog/lib"]
 
     # Only load the plugins named here, in the order given (default is alphabetical).
     # :all can be used as a placeholder for all plugins not explicitly named.
