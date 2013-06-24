@@ -97,7 +97,7 @@ module Foreman::Model
     def create_vm(args = {})
       #ovirt doesn't accept '.' in vm name.
       args[:name] = args[:name].parameterize
-      vm = super args
+      vm = super({ :first_boot_dev => 'network' }.merge(args))
       begin
         create_interfaces(vm, args[:interfaces_attributes])
         create_volumes(vm, args[:volumes_attributes])
@@ -109,7 +109,7 @@ module Foreman::Model
     end
 
     def new_vm(attr={})
-      vm = client.servers.new vm_instance_defaults.merge(attr)
+      vm = super
       interfaces = nested_attributes_for :interfaces, attr[:interfaces_attributes]
       interfaces.map{ |i| vm.interfaces << new_interface(i)}
       volumes = nested_attributes_for :volumes, attr[:volumes_attributes]
@@ -161,6 +161,20 @@ module Foreman::Model
       end
     end
 
+    def update_required?(old_attrs, new_attrs)
+      return true if super(old_attrs, new_attrs)
+
+      new_attrs[:interfaces_attributes].each do |key, interface|
+        return true if (interface[:id].blank? || interface[:_delete] == '1') && key != 'new_interfaces' #ignore the template
+      end if new_attrs[:interfaces_attributes]
+
+      new_attrs[:volumes_attributes].each do |key, volume|
+        return true if (volume[:id].blank? || volume[:_delete] == '1') && key != 'new_volumes' #ignore the template
+      end if new_attrs[:volumes_attributes]
+
+      false
+    end
+
     protected
 
     def bootstrap(args)
@@ -193,21 +207,6 @@ module Foreman::Model
       ca_url.port = 80 if ca_url.port == 443
       Net::HTTP.get(ca_url).to_s
     end
-
-    def update_required?(old_attrs, new_attrs)
-      return true if super(old_attrs, new_attrs)
-
-      new_attrs[:interfaces_attributes].each do |key, interface|
-        return true if (interface[:id].blank? || interface[:_delete] == '1') && key != 'new_interfaces' #ignore the template
-      end if new_attrs[:interfaces_attributes]
-
-      new_attrs[:volumes_attributes].each do |key, volume|
-        return true if (volume[:id].blank? || volume[:_delete] == '1') && key != 'new_volumes' #ignore the template
-      end if new_attrs[:volumes_attributes]
-
-      false
-    end
-
 
     private
     def create_interfaces(vm, attrs)

@@ -25,4 +25,18 @@ module ComputeResourcesHelper
     opts = [0.25, 0.5, 0.75, 1, 2, 4, 8, 16]
     opts.map{|n| [number_to_human_size(n*gb), (n*gb).to_i] unless n > (max_memory / gb)}.compact
   end
+
+  def password_placeholder(obj)
+    obj.id ? "********" : ""
+  end
+
+  def list_datacenters compute
+    return [] unless compute.uuid || controller.action_name == 'test_connection'
+    compute.datacenters
+  rescue Foreman::FingerprintException => e
+    compute.errors[:pubkey_hash] = e
+    []
+  rescue
+    []
+  end
 end

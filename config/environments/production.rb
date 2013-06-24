@@ -50,14 +50,21 @@ Foreman::Application.configure do
   # Compress JavaScripts and CSS
   config.assets.compress = true
 
-  # Don't fallback to assets pipeline if a precompiled asset is missed
-  config.assets.compile = false
+  # Fallback to assets pipeline if a precompiled asset is missed:
+  # that's the case when an engine with it's own assets is added to Foreman later in production.
+  config.assets.compile = true
 
   # Generate digests for assets URLs
   config.assets.digest = true
 
   # Defaults to Rails.root.join("public/assets")
   # config.assets.manifest = YOUR_PATH
+
+  # Add the fonts path
+  config.assets.paths << Rails.root.join('vendor', 'assets', 'fonts')
+
+  # Precompile additional assets
+  config.assets.precompile += %w( .svg .eot .woff .ttf )
 
   # Precompile additional assets (application.js, application.css, and all non-JS/CSS are already added)
   #  config.assets.precompile += %w()
@@ -69,6 +76,7 @@ Foreman::Application.configure do
                   ace/theme-twilight
                   ace/theme-dawn
                   ace/theme-clouds
+                  ace/theme-textmate
                   ace/mode-diff
                   ace/mode-ruby
                   ace/keybinding-vim
@@ -96,6 +104,7 @@ Foreman::Application.configure do
                   trends
                   charts
                   taxonomy
+                  gettext/all
                  )
   stylesheets = %w( )
 

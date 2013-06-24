@@ -1,5 +1,5 @@
 class Taxonomy < ActiveRecord::Base
-  audited
+  audited :allow_mass_assignment => true
   has_associated_audits
 
   serialize :ignore_types, Array
@@ -32,15 +32,15 @@ class Taxonomy < ActiveRecord::Base
   end
 
   def to_label
-    name =~ /[A-Z]/ ? name : name.capitalize
+    name
   end
 
   def self.locations_enabled
-    SETTINGS[:locations_enabled]
+    enabled?(:location)
   end
 
   def self.organizations_enabled
-    SETTINGS[:organizations_enabled]
+    enabled?(:organization)
   end
 
   def self.no_taxonomy_scope
@@ -54,6 +54,17 @@ class Taxonomy < ActiveRecord::Base
       Location.as_location location do
         yield if block_given?
       end
+    end
+  end
+
+  def self.enabled?(taxonomy)
+    case taxonomy
+      when :organization
+        SETTINGS[:organizations_enabled]
+      when :location
+        SETTINGS[:locations_enabled]
+      else
+        raise ArgumentError, "unknown taxonomy #{taxonomy}"
     end
   end
 

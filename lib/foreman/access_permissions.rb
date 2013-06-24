@@ -45,7 +45,7 @@ Foreman::AccessControl.map do |map|
 
   map.security_block :compute_resources do |map|
     ajax_actions = [:test_connection]
-    map.permission :view_compute_resources,    {:compute_resources => [:index, :show, :auto_complete_search],
+    map.permission :view_compute_resources,    {:compute_resources => [:index, :show, :auto_complete_search, :ping],
                                                 :"api/v1/compute_resources" => [:index, :show],
                                                 :"api/v2/compute_resources" => [:index, :show]
     }
@@ -181,13 +181,13 @@ Foreman::AccessControl.map do |map|
                                             :"api/v1/hostgroups" => [:index, :show],
                                             :"api/v2/hostgroups" => [:index, :show]
                                           }
-    map.permission :create_hostgroups,     {:hostgroups => [:new, :create, :clone].push(*ajax_actions),
+    map.permission :create_hostgroups,     {:hostgroups => [:new, :create, :clone, :nest, :process_hostgroup].push(*ajax_actions),
                                             :host => host_ajax_actions,
                                             :puppetclasses => pc_ajax_actions,
                                             :"api/v1/hostgroups" => [:create, :clone],
                                             :"api/v2/hostgroups" => [:create, :clone]
                                           }
-    map.permission :edit_hostgroups,       {:hostgroups => [:edit, :update, :architecture_selected, :nest].push(*ajax_actions),
+    map.permission :edit_hostgroups,       {:hostgroups => [:edit, :update, :architecture_selected, :process_hostgroup].push(*ajax_actions),
                                             :host => host_ajax_actions,
                                             :puppetclasses => pc_ajax_actions,
                                             :"api/v1/hostgroups" => [:update],
@@ -210,7 +210,7 @@ Foreman::AccessControl.map do |map|
     tasks_ajax_actions = [:show]
 
     map.permission :view_hosts,    {:hosts => [:index, :show, :errors, :active, :out_of_sync, :disabled, :pending,
-                                      :externalNodes, :pxe_config, :storeconfig_klasses, :auto_complete_search],
+                                      :externalNodes, :pxe_config, :storeconfig_klasses, :auto_complete_search, :bmc],
                                     :dashboard => [:OutOfSync, :errors, :active],
                                     :unattended => :template,
                                      :"api/v1/hosts" => [:index, :show, :status],
@@ -244,7 +244,10 @@ Foreman::AccessControl.map do |map|
                                     :tasks => tasks_ajax_actions}
     map.permission :power_hosts,   {:hosts => [:power]}
     map.permission :console_hosts, {:hosts => [:console]}
-    map.permission :puppetrun_hosts, {:hosts => [:puppetrun, :multiple_puppetrun, :update_multiple_puppetrun]}
+    map.permission :ipmi_boot, {:hosts => [:ipmi_boot]}
+    map.permission :puppetrun_hosts, {:hosts => [:puppetrun, :multiple_puppetrun, :update_multiple_puppetrun],
+                                      :"api/v2/hosts" => [:puppetrun]
+                                      }
   end
 
   map.security_block :host_editing do |map|
@@ -406,7 +409,7 @@ Foreman::AccessControl.map do |map|
   end
 
   map.security_block :smart_proxies do |map|
-    map.permission :view_smart_proxies,    {:smart_proxies => [:index, :show],
+    map.permission :view_smart_proxies,    {:smart_proxies => [:index, :ping],
                                           :"api/v1/smart_proxies" => [:index, :show],
                                           :"api/v2/smart_proxies" => [:index, :show]
     }
@@ -425,15 +428,15 @@ Foreman::AccessControl.map do |map|
   end
 
   map.security_block :smart_proxies_autosign do |map|
-    map.permission :view_smart_proxies_autosign,    {:smart_proxies_autosign => [:index, :show]}
-    map.permission :create_smart_proxies_autosign,  {:smart_proxies_autosign => [:new, :create]}
-    map.permission :destroy_smart_proxies_autosign, {:smart_proxies_autosign => [:destroy]}
+    map.permission :view_smart_proxies_autosign,    {:autosign => [:index, :show]}
+    map.permission :create_smart_proxies_autosign,  {:autosign => [:new, :create]}
+    map.permission :destroy_smart_proxies_autosign, {:autosign => [:destroy]}
   end
 
   map.security_block :smart_proxies_puppetca do |map|
-    map.permission :view_smart_proxies_puppetca,    {:smart_proxies_puppetca => [:index]}
-    map.permission :edit_smart_proxies_puppetca,    {:smart_proxies_puppetca => [:update]}
-    map.permission :destroy_smart_proxies_puppetca, {:smart_proxies_puppetca => [:destroy]}
+    map.permission :view_smart_proxies_puppetca,    {:puppetca => [:index]}
+    map.permission :edit_smart_proxies_puppetca,    {:puppetca => [:update]}
+    map.permission :destroy_smart_proxies_puppetca, {:puppetca => [:destroy]}
   end
 
   map.security_block :subnets do |map|

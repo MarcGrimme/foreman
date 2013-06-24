@@ -19,7 +19,7 @@ class LocationsControllerTest < ActionController::TestCase
     post :update, {:commit => "Submit", :id => location.id, :location => {:name => "New Name"} }, set_session_user
     updated_location = Location.find_by_id(location.id)
 
-    assert updated_location.name = location.name
+    assert_equal "New Name", updated_location.name
     assert_redirected_to locations_path
   end
 
@@ -39,7 +39,7 @@ class LocationsControllerTest < ActionController::TestCase
 
     assert_difference('Location.count', -1) do
       delete :destroy, {:id => location}, set_session_user
-      assert_contains flash[:notice], "Successfully destroyed #{location}."
+      assert_match /Successfully deleted/, flash[:notice]
     end
   end
 

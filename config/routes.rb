@@ -27,6 +27,8 @@ Foreman::Application.routes.draw do
         post 'environment_selected'
         put 'power'
         get 'console'
+        get 'bmc'
+        put 'ipmi_boot'
       end
       collection do
         get 'multiple_actions'
@@ -133,6 +135,7 @@ Foreman::Application.routes.draw do
       post 'domain_selected'
       post 'use_image_selected'
       post 'medium_selected'
+      post 'process_hostgroup'
     end
   end
 
@@ -153,9 +156,12 @@ Foreman::Application.routes.draw do
 
 
   resources :smart_proxies, :except => [:show] do
+    member do
+      post 'ping'
+    end
     constraints(:id => /[^\/]+/) do
-      resources :puppetca, :controller => "SmartProxies::Puppetca", :only => [:index, :update, :destroy]
-      resources :autosign, :controller => "SmartProxies::Autosign", :only => [:index, :new, :create, :destroy]
+      resources :puppetca, :only => [:index, :update, :destroy]
+      resources :autosign, :only => [:index, :new, :create, :destroy]
     end
   end
 
@@ -247,6 +253,7 @@ Foreman::Application.routes.draw do
         member do
           post 'hardware_profile_selected'
           post 'cluster_selected'
+          post 'ping'
         end
         constraints(:id => /[^\/]+/) do
           resources :vms, :controller => "compute_resources_vms" do
@@ -327,6 +334,9 @@ Foreman::Application.routes.draw do
         post 'import_mismatches'
       end
     end
+  end
+
+  resources :about, :only => :index do
   end
 
 end

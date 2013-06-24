@@ -7,12 +7,12 @@
     <%= select_f f, :domain_id, accessible_domains, :id, :to_label,
                  { :include_blank => accessible_domains.any? ? true : _("No domains")},
                  { :disabled => accessible_domains.empty? ? true : false,
-                   :help_inline => image_tag("/assets/spinner.gif", :class => "indicator hide"),
+                   :help_inline => :indicator,
                    :class => 'interface_domain', :'data-url' => domain_selected_hosts_path } %>
     <%= select_f f, :subnet_id, domain_subnets, :id, :title,
                  { :include_blank => domain_subnets.any? ? true : _("No subnets")},
                  { :disabled => domain_subnets.empty? ? true : false,
-                   :help_inline => image_tag("/assets/spinner.gif", :class => "indicator hide"),
+                   :help_inline => :indicator,
                    :class => 'interface_subnet', :'data-url' => freeip_subnets_path } %>
     <%= text_f f, :ip  %>
 
@@ -22,6 +22,10 @@
       <%= password_f f, :password, ifs_bmc_opts(f.object) %>
       <%# TODO: current rails version does not allow to pass a selected value where there is no method (e.g. providers below) rescue here is a hack %>
       <%= selectable_f f, :provider, Nic::BMC::PROVIDERS, {:selected => nil}, ifs_bmc_opts(f.object) rescue f.hidden_field :provider, :value => 'IPMI' %>
+      <%# Hack for Rails bug in 3.2.13 - serialized field attrs does not update through accepts_nested_attributes_for if it's
+          the only field that is dirty. If updated_at is explicited updated, then attrs will also be updated correctly %>
+      <%= f.hidden_field :updated_at, :value => Time.now %>
+
     <% end %>
 
   <% end %>

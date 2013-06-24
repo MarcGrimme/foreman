@@ -24,12 +24,39 @@ module DashboardHelper
 
   def render_run_distribution hosts, options = {}
     data = count_reports(hosts)
-    flot_bar_chart(_("run_distribution"), _("Minutes Ago"), _("Number Of Clients"), data, options)
+    flot_bar_chart("run_distribution", _("Minutes Ago"), _("Number Of Clients"), data, options)
   end
 
   def searchable_links name, search
     search += " and #{params[:search]}" unless params[:search].blank?
     link_to name, hosts_path(:search => search),:class=>"dashboard-links"
+  end
+
+  def latest_events
+    # 6 reports + header fits the events box nicely...
+    summary = Report.my_reports.interesting.search_for('reported > "7 days ago"').limit(6)
+  end
+
+  def translated_header(shortname, longname)
+    "<th><span class='small' title='' data-original-title='#{longname}'>#{shortname}</span></th>"
+  end
+
+  def latest_headers
+    string =  "<th>#{_("Host")}</th>"
+    # TRANSLATORS: initial character of Applied
+    string += translated_header(s_('Applied|A'), _('Applied'))
+    # TRANSLATORS: initial character of Restarted
+    string += translated_header(s_('Restarted|R'), _('Restarted'))
+    # TRANSLATORS: initial character of Failed
+    string += translated_header(s_('Failed|F'), _('Failed'))
+    # TRANSLATORS: initial characters of Failed Restarts
+    string += translated_header(s_('Failed Restarts|FR'), _('Failed Restarts'))
+    # TRANSLATORS: initial character of Skipped
+    string += translated_header(s_('Skipped|S'), _('Skipped'))
+    # TRANSLATORS: initial character of Pending
+    string += translated_header(s_('Pending|P'), _('Pending'))
+
+    string.html_safe
   end
 
 end

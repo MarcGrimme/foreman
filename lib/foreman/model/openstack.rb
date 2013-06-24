@@ -1,7 +1,7 @@
 module Foreman::Model
   class Openstack < ComputeResource
     attr_accessor :tenant
-    has_one :key_pair, :foreign_key => :compute_resource_id
+    has_one :key_pair, :foreign_key => :compute_resource_id, :dependent => :destroy
     after_create :setup_key_pair
     after_destroy :destroy_key_pair
     delegate :flavors, :to => :client
@@ -22,7 +22,7 @@ module Foreman::Model
       [:image]
     end
 
-    def test_connection
+    def test_connection options = {}
       super
       errors[:user].empty? and errors[:password] and tenants
     rescue => e

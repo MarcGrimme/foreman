@@ -11,8 +11,9 @@ module ApplicationHelper
     render :partial => 'common/show_habtm', :collection => associations, :as => :association
   end
 
-  def edit_habtm klass, association, prefix=nil
-    render :partial => 'common/edit_habtm', :locals =>{:prefix => prefix, :klass => klass, :associations => association.all.sort.delete_if{|e| e == klass}}
+  def edit_habtm klass, association, prefix = nil, options = {}
+    render :partial => 'common/edit_habtm', :locals =>{:prefix => prefix, :klass => klass, :options => options,
+                                                       :associations => association.all.sort.delete_if{|e| e == klass}}
   end
 
   def link_to_remove_fields(name, f)
@@ -121,8 +122,8 @@ module ApplicationHelper
     end
   end
 
-  def authorized_edit_habtm klass, association, prefix=nil
-    return edit_habtm(klass, association, prefix) if authorized_for params[:controller], params[:action]
+  def authorized_edit_habtm klass, association, prefix = nil, options = {}
+    return edit_habtm(klass, association, prefix, options) if authorized_for params[:controller], params[:action]
     show_habtm klass.send(association.name.pluralize.downcase)
   end
 
@@ -154,7 +155,7 @@ module ApplicationHelper
   end
 
   def auto_complete_search(name, val, options = {})
-    path = eval("#{controller_name}_path")
+    path = send("#{controller_name}_path")
     options.merge!(:class => "autocomplete-input", :'data-url' => "#{path}/auto_complete_#{name}" )
     text_field_tag(name, val, options)
   end
@@ -164,7 +165,7 @@ module ApplicationHelper
   end
 
   def method_path method
-    eval("#{method}_#{controller_name}_path")
+    send("#{method}_#{controller_name}_path")
   end
 
   def edit_textfield(object, property, options={})
@@ -181,7 +182,8 @@ module ApplicationHelper
 
   def flot_pie_chart name, title, data, options = {}
     data = data.map { |k,v| {:label=>k.to_s.humanize, :data=>v} } if  data.is_a?(Hash)
-    header = content_tag(:h4,(options[:show_title]) ? title : '', :class=>'ca pie-title', :'data-original-title'=>"Expand the chart", :rel=>'twipsy')
+    data.map{|element| element[:label] = truncate(element[:label],:length => 16)}
+    header = content_tag(:h4,(options[:show_title]) ? title : '', :class=>'ca pie-title', :'data-original-title'=>_("Expand the chart"), :rel=>'twipsy')
     link_to_function(header, "expand_chart(this)")+
         content_tag(:div, nil,
                     { :id    => name,
@@ -242,6 +244,24 @@ module ApplicationHelper
     end
   end
 
+  def select_action_button(title, *args)
+    # the no-buttons code is needed for users with less permissions
+    return unless args
+    args = args.flatten.map{|arg| arg unless arg.blank?}.compact
+    return if args.length == 0
+
+    #single button
+    return content_tag(:span, args[0].html_safe, :class=>'btn') if args.length == 1
+
+    #multiple options
+    content_tag(:div, :class=>'btn-group') do
+    link_to((title +" " +content_tag(:i, '', :class=>'caret')).html_safe,'#', :class=>"btn dropdown-toggle", :'data-toggle'=>'dropdown') +
+        content_tag(:ul,:class=>"dropdown-menu") do
+          args.map{|option| content_tag(:li,option)}.join(" ").html_safe
+        end
+    end
+  end
+
   def toolbar_action_buttons(*args)
     # the no-buttons code is needed for users with less permissions
     return unless args
@@ -264,7 +284,7 @@ module ApplicationHelper
   end
 
   def gravatar_image_tag(email, html_options = {})
-    default_image = "assets/user.jpg"
+    default_image = path_to_image("user.jpg")
     html_options.merge!(:onerror=>"this.src='#{default_image}'")
     image_url = Setting["use_gravatar"] ? gravatar_url(email, default_image) : default_image
     return image_tag(image_url, html_options)
@@ -273,10 +293,6 @@ module ApplicationHelper
   def gravatar_url(email, default_image)
     return default_image if email.blank?
     "#{request.protocol}//secure.gravatar.com/avatar/#{Digest::MD5.hexdigest(email)}?d=mm&s=30"
-  end
-
-  def sign_out_url
-    User.logout_path + URI.escape(logout_users_url)
   end
 
   private

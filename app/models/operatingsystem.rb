@@ -4,7 +4,9 @@ require 'uri'
 class Operatingsystem < ActiveRecord::Base
   include Authorization
 
+  before_destroy EnsureNotUsedBy.new(:hosts, :hostgroups)
   has_many_hosts
+  has_many :hostgroups
   has_many :images, :dependent => :destroy
   has_and_belongs_to_many :media
   has_and_belongs_to_many :ptables
@@ -26,9 +28,8 @@ class Operatingsystem < ActiveRecord::Base
   before_validation :downcase_release_name
   #TODO: add validation for name and major uniqueness
 
-  before_destroy EnsureNotUsedBy.new(:hosts)
   before_save :deduce_family
-  audited
+  audited :allow_mass_assignment => true
   default_scope :order => 'LOWER(operatingsystems.name)'
 
   scoped_search :on => :name, :complete_value => :true
@@ -43,9 +44,10 @@ class Operatingsystem < ActiveRecord::Base
 
   FAMILIES = { 'Debian'  => %r{Debian|Ubuntu}i,
                'Redhat'  => %r{RedHat|Centos|Fedora|Scientific|SLC}i,
-               'Suse'    => %r{OpenSuSE}i,
+               'Suse'    => %r{OpenSuSE|SLES|SLED}i,
                'Windows' => %r{Windows}i,
                'Archlinux' => %r{Archlinux}i,
+               'Gentoo' => %r{Gentoo}i,
                'Solaris' => %r{Solaris}i }
 
   class Jail < Safemode::Jail
@@ -160,7 +162,7 @@ class Operatingsystem < ActiveRecord::Base
   end
 
   def image_extension
-    raise ::Foreman::Exception(N_("Attempting to construct an operating system image filename but %s cannot be built from an image"), family)
+    raise ::Foreman::Exception.new(N_("Attempting to construct an operating system image filename but %s cannot be built from an image"), family)
   end
 
   # If this OS family requires access to its media via NFS

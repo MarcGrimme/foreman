@@ -3,8 +3,8 @@ module TrendsHelper
   include CommonParametersHelper
 
   def trendable_types new_record
-    options = {_('Environment') => 'Environment', _('Operating System') => 'Operatingsystem',
-     _('Model') => 'Model', _('Facts') =>'FactName',_('Host Group') => 'Hostgroup', _('Compute Resource') => 'ComputeResource'}
+    options = {_('Environment') => 'Environment', _('Operating system') => 'Operatingsystem',
+     _('Model') => 'Model', _('Facts') =>'FactName',_('Host group') => 'Hostgroup', _('Compute resource') => 'ComputeResource'}
     if new_record
       existing = ForemanTrend.includes(:trendable).types.map(&:to_s)
       options.delete_if{ |k,v|  existing.include?(v) }
@@ -14,10 +14,8 @@ module TrendsHelper
 
   def trend_days_filter
     form_tag @trend, :id => 'days_filter', :method => :get, :class=>"form form-inline" do
-        content_tag(:span, _("Trend of the last")) + ' '
-        select(nil, 'range', 1..Setting.max_trend, {:selected => range}, {:class=>"span1", :onchange =>"$('#days_filter').submit();$(this).disabled();"}) +
-        content_tag(:span, ' ' + _("days."))
-      end
+      content_tag(:span, (_("Trend of the last %s days.") % select(nil, 'range', 1..Setting.max_trend, {:selected => range}, {:class=>"span1", :onchange =>"$('#days_filter').submit();$(this).disabled();"})).html_safe)
+    end
   end
 
   def trend_title trend

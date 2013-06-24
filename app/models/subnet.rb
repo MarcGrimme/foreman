@@ -3,7 +3,9 @@ class Subnet < ActiveRecord::Base
   include Authorization
   include Taxonomix
 
+  before_destroy EnsureNotUsedBy.new(:hosts, :interfaces )
   has_many_hosts
+  has_many :hostgroups
   belongs_to :dhcp, :class_name => "SmartProxy"
   belongs_to :tftp, :class_name => "SmartProxy"
   belongs_to :dns,  :class_name => "SmartProxy"
@@ -15,6 +17,9 @@ class Subnet < ActiveRecord::Base
   validates_uniqueness_of :network
   validates_format_of     :network, :mask,                        :with => Net::Validations::IP_REGEXP
   validates_format_of     :gateway, :dns_primary, :dns_secondary, :with => Net::Validations::IP_REGEXP, :allow_blank => true, :allow_nil => true
+  validates_length_of     :network, :mask, :gateway, :dns_primary, :dns_secondary, :maximum => 15, :message => _("must be at most 15 characters")
+  validate :ensure_ip_addr_new
+  before_validation :cleanup_addresses
   validate :name_should_be_uniq_across_domains
 
   validate :validate_ranges
@@ -24,8 +29,6 @@ class Subnet < ActiveRecord::Base
       order('vlanid')
     end
   }
-
-  before_destroy EnsureNotUsedBy.new(:hosts, :interfaces )
 
   scoped_search :on => [:name, :network, :mask, :gateway, :dns_primary, :dns_secondary, :vlanid], :complete_value => true
   scoped_search :in => :domains, :on => :name, :rename => :domain, :complete_value => true
@@ -143,4 +146,29 @@ class Subnet < ActiveRecord::Base
       errors.add(:name, _("domain %s already has a subnet with this name") % d) if d.subnets.where(conds).first
     end
   end
+
+  def cleanup_addresses
+    self.network = cleanup_ip(network) if network.present?
+    self.mask = cleanup_ip(mask) if mask.present?
+    self.gateway = cleanup_ip(gateway) if gateway.present?
+    self.dns_primary = cleanup_ip(dns_primary) if dns_primary.present?
+    self.dns_secondary = cleanup_ip(dns_secondary) if dns_secondary.present?
+    self
+  end
+
+  def cleanup_ip(address)
+    address = address.strip
+    address.gsub!(/\.\.+/, ".")
+    address.gsub!(/2555+/, "255")
+    address
+  end
+
+  def ensure_ip_addr_new
+    errors.add(:network, _("is invalid")) if network.present? && (IPAddr.new(network) rescue nil).nil?
+    errors.add(:mask, _("is invalid")) if mask.present? && (IPAddr.new(mask) rescue nil).nil?
+    errors.add(:gateway, _("is invalid")) if gateway.present? && (IPAddr.new(gateway) rescue nil).nil?
+    errors.add(:dns_primary, _("is invalid")) if dns_primary.present? && (IPAddr.new(dns_primary) rescue nil).nil?
+    errors.add(:dns_secondary, _("is invalid")) if dns_secondary.present? && (IPAddr.new(dns_secondary) rescue nil).nil?
+  end
+
 end

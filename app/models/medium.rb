@@ -2,15 +2,18 @@ class Medium < ActiveRecord::Base
   include Authorization
   include Taxonomix
 
+  before_destroy EnsureNotUsedBy.new(:hosts, :hostgroups)
+
   has_and_belongs_to_many :operatingsystems
   has_many_hosts
+  has_many :hostgroups
 
   # We need to include $ in this as $arch, $release, can be in this string
   VALID_NFS_PATH=/^([-\w\d\.]+):(\/[\w\d\/\$\.]+)$/
   validates_uniqueness_of :name
   validates_uniqueness_of :path
   validates_presence_of :name, :path
-  validates_format_of :name, :with => /\A(\S+\s?)+\Z/, :message => N_("can't be blank or contain trailing white spaces.")
+  validates_format_of :name, :with => /\A(\S+\s)*\S+\Z/, :message => N_("can't be blank or contain trailing white spaces.")
   validates_format_of :path, :with => /^(http|https|ftp|nfs):\/\//,
     :message => _("Only URLs with schema http://, https://, ftp:// or nfs:// are allowed (e.g. nfs://server/vol/dir)")
 
@@ -18,12 +21,11 @@ class Medium < ActiveRecord::Base
     :with => VALID_NFS_PATH, :message => _("does not appear to be a valid nfs mount path"),
     :if => Proc.new { |m| m.respond_to? :media_path }
 
-  before_destroy EnsureNotUsedBy.new(:hosts)
   # with proc support, default_scope can no longer be chained
   # include all default scoping here
   default_scope lambda {
     with_taxonomy_scope do
-      order("LOWER(media.name)")
+      order("media.name")
     end
   }
   scoped_search :on => :name, :complete_value => :true, :default_order => true

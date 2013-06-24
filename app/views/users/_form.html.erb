@@ -21,6 +21,7 @@
       <%= text_f f, :firstname %>
       <%= text_f f, :lastname %>
       <%= text_f f, :mail %>
+      <%= selectable_f(f, :locale, FastGettext.human_available_locales, {:include_blank => _("Browser locale")}, {:label => "Language"}) %>
 
       <%= select_f(f, :auth_source_id, AuthSource.all.delete_if { |a| a.to_label.nil? }, :id, :to_label, {:include_blank => true}, {:onchange => 'auth_source_selected()', :label => _("Authorized by")}) unless @editing_self
       %>
@@ -30,8 +31,8 @@
         <%= password_f f, :password_confirmation, :label => _("Verify") %>
       </div>
       <% unless @editing_self -%>
-        <%= checkbox_f f, :admin %>
-        <%= multiple_checkboxes f, :roles, @user, Role.givable, {:label => _('Roles')} %>
+        <%= checkbox_f f, :admin if User.current.can_change_admin_flag? %>
+        <%= multiple_checkboxes f, :roles, @user, Role.givable.for_current_user, {:label => _('Roles')} %>
       <% end %>
     </div>
 

@@ -10,15 +10,23 @@ if File.exist?(File.expand_path('../../Gemfile.in', __FILE__))
   require 'bundler_ext'
   BundlerExt.system_require(File.expand_path('../../Gemfile.in', __FILE__), :all)
 else
-  # If you have a Gemfile, require the gems listed there, including any gems
-  # you've limited to :test, :development, or :production.
+  # If you have a Gemfile, require the gems listed there
+  # Note that :default, :test, :development, :production, and :assets groups
+  # will be included by default (and dependending on the current environment)
   if defined?(Bundler)
     Class.new Rails::Railtie do
       console {Foreman.setup_console}
     end
     Bundler.require(*Rails.groups(:assets => %w(development test)))
+    begin 
+      Bundler.require(:libvirt) if SETTINGS[:unattended]
+    rescue LoadError
+      puts "Libvirt bindings are missing - hypervisor management is disabled"
+    end
   end
 end
+
+SETTINGS[:libvirt] = SETTINGS[:unattended] && defined?(Libvirt)
 
 require File.expand_path('../../lib/timed_cached_store.rb', __FILE__)
 require File.expand_path('../../lib/core_extensions', __FILE__)
@@ -36,9 +44,9 @@ module Foreman
 
     # Custom directories with classes and modules you want to be autoloadable.
     # config.autoload_paths += %W(#{config.root}/extras)
-    config.autoload_paths += %W(#{config.root}/lib)
+    config.autoload_paths += Dir["#{config.root}/lib"]
     config.autoload_paths += Dir["#{config.root}/app/controllers/concerns"]
-
+    config.autoload_paths += Dir[ Rails.root.join('app', 'models', 'power_manager') ]
 
     # Only load the plugins named here, in the order given (default is alphabetical).
     # :all can be used as a placeholder for all plugins not explicitly named.

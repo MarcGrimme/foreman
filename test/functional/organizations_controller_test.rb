@@ -19,7 +19,7 @@ class OrganizationsControllerTest < ActionController::TestCase
     post :update, {:commit => "Submit", :id => organization.id, :organization => {:name => "New Name"} }, set_session_user
     updated_organization = Organization.find_by_id(organization.id)
 
-    assert updated_organization.name = organization.name
+    assert_equal "New Name", updated_organization.name
     assert_redirected_to organizations_path
   end
 
@@ -39,7 +39,7 @@ class OrganizationsControllerTest < ActionController::TestCase
 
     assert_difference('Organization.count', -1) do
       delete :destroy, {:id => organization}, set_session_user
-      assert_contains flash[:notice], "Successfully destroyed #{organization}."
+      assert_match /Successfully deleted/, flash[:notice]
     end
   end
 

@@ -12,7 +12,7 @@ module PuppetclassesAndEnvironmentsHelper
   end
 
   def import_proxy_select hash
-    toolbar_action_buttons(
+    select_action_button( _('Import'),
       SmartProxy.puppet_proxies.map do |proxy|
         display_link_if_authorized(_("Import from %s") % proxy.name, hash.merge(:proxy => proxy), :class=>'btn')
       end.flatten
@@ -31,7 +31,7 @@ module PuppetclassesAndEnvironmentsHelper
       end
     end
     hash.keys.sort.map do |key|
-      link_to_function key, { :rel => "popover", "data-content" => hash[key].sort.join('<br>').html_safe, "data-original-title" => key }
+      link_to key,{}, {:remote => true, :rel => "popover", :data => {"content" => hash[key].sort.join('<br>').html_safe, "original-title" => key}}
     end.to_sentence.html_safe
 
   end

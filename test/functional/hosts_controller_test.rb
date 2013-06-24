@@ -114,19 +114,19 @@ class HostsControllerTest < ActionController::TestCase
 
   def test_update_invalid
     Host.any_instance.stubs(:valid?).returns(false)
-    put :update, {:id => Host.first.name}, set_session_user
+    put :update, {:id => Host.first.name, :host => {}}, set_session_user
     assert_template 'edit'
   end
 
   def test_update_valid
     Host.any_instance.stubs(:valid?).returns(true)
-    put :update, {:id => Host.first.name}, set_session_user
+    put :update, {:id => Host.first.name, :host => {}}, set_session_user
     assert_redirected_to host_url(assigns(:host))
   end
 
   def test_update_valid_json
     Host.any_instance.stubs(:valid?).returns(true)
-    put :update, {:format => "json", :id => Host.first.name}, set_session_user
+    put :update, {:format => "json", :id => Host.first.name, :host => {}}, set_session_user
     host = ActiveSupport::JSON.decode(@response.body)
     assert_response :ok
   end
@@ -214,7 +214,7 @@ class HostsControllerTest < ActionController::TestCase
     end
     get :index, {}, set_session_user.merge(:user => @one.id)
     assert_response :success
-    assert_contains @response.body, /#{@host1.shortname}/
+    assert_match /#{@host1.shortname}/, @response.body
   end
 
   test 'user with edit host rights and domain is set should fail to view host2' do
@@ -328,7 +328,7 @@ class HostsControllerTest < ActionController::TestCase
   test 'multiple without hosts' do
     post :update_multiple_hostgroup, {}, set_session_user
     assert_redirected_to hosts_url
-    assert_equal "No Hosts selected", flash[:error]
+    assert_equal "No hosts selected", flash[:error]
 
     # now try to pass an invalid id
     post :update_multiple_hostgroup, {:host_ids => [-1], :host_names => ["no.such.host"]}, set_session_user
@@ -585,7 +585,6 @@ class HostsControllerTest < ActionController::TestCase
   end
 
   test 'hosts in trusted hosts list and SSL cert should get externalNodes successfully' do
-    SmartProxy.delete_all
     User.current = nil
     Setting[:restrict_registered_puppetmasters] = true
     Setting[:require_ssl_puppetmasters] = true
@@ -708,7 +707,7 @@ class HostsControllerTest < ActionController::TestCase
                                        :host_ids => Host.all.map(&:id)
                                        }, set_session_user
     assert_redirected_to :controller => :hosts, :action => :index
-    assert flash[:notice], "Updated hosts: Changed Location"
+    assert_equal "Updated hosts: Changed Location", flash[:notice]
   end
   test "update multiple location updates location of hosts if succeeds on optimistic import" do
     @request.env['HTTP_REFERER'] = hosts_path
@@ -741,7 +740,7 @@ class HostsControllerTest < ActionController::TestCase
                                        :host_ids => Host.all.map(&:id)
                                        }, set_session_user
     assert_redirected_to :controller => :hosts, :action => :index
-    assert flash[:error], "Cannot update organization to organization 1 because of mismatch in settings"
+    assert_equal "Cannot update Organization to Organization 1 because of mismatch in settings", flash[:error]
   end
   test "update multiple organization does not update organization of hosts if fails on pessimistic import" do
     @request.env['HTTP_REFERER'] = hosts_path
@@ -773,7 +772,7 @@ class HostsControllerTest < ActionController::TestCase
                                        :host_ids => Host.all.map(&:id)
                                        }, set_session_user
     assert_redirected_to :controller => :hosts, :action => :index
-    assert flash[:notice], "Updated hosts: Changed Organization"
+    assert_equal "Updated hosts: Changed Organization", flash[:notice]
   end
   test "update multiple organization updates organization of hosts if succeeds on optimistic import" do
     @request.env['HTTP_REFERER'] = hosts_path
@@ -800,7 +799,7 @@ class HostsControllerTest < ActionController::TestCase
   test "can change sti type to valid subtype" do
     class Host::Valid < Host::Base ; end
     put :update, { :commit => "Update", :id => @host.name, :host => {:type => "Host::Valid"} }, set_session_user
-    @host = Host.find(@host.id)
+    @host = Host::Base.find(@host.id)
     assert_equal "Host::Valid", @host.type
   end
 
@@ -810,6 +809,51 @@ class HostsControllerTest < ActionController::TestCase
     @host = Host.find(@host.id)
     assert_equal old_type, @host.type
   end
+
+  test "blank root password submitted does not erase existing password" do
+    old_root_pass = @host.root_pass
+    put :update, { :commit => "Update", :id => @host.name, :host => {:root_pass => ''} }, set_session_user
+    @host = Host.find(@host.id)
+    assert_equal old_root_pass, @host.root_pass
+  end
+
+  test "blank BMC password submitted does not erase existing password" do
+    bmc1 = @host.interfaces.build(:name => "bmc1", :mac => '52:54:00:b0:0c:fc', :type => 'Nic::BMC',
+                      :ip => '10.0.1.101', :username => 'user1111', :password => 'abc123456', :provider => 'IPMI')
+    assert bmc1.save
+    old_password = bmc1.password
+    put :update, { :commit => "Update", :id => @host.name, :host => {:interfaces_attributes => {"0" => {:id => bmc1.id, :password => ''} } } }, set_session_user
+    @host = Host.find(@host.id)
+    assert_equal old_password, @host.interfaces.bmc.first.password
+  end
+
+  # To test that work-around works for Rails bug with accepts_nested_attributes_for and serialized child field
+  # Note that both :mac annd :updated_at are dirty in :interfaces_attributes
+  # For unknown reason, the test didn't pass if only :updated_at was dirty, but it works in the UI to only pass :updated_at
+  test "BMC password updates successful in attrs serialized field if updated_at is passed explictedly" do
+    bmc1 = @host.interfaces.build(:name => "bmc1", :mac => '52:54:00:b0:0c:fc', :type => 'Nic::BMC',
+                      :ip => '10.0.1.101', :username => 'user1111', :password => 'abc123456', :provider => 'IPMI')
+    assert bmc1.save
+    new_password = "topsecret"
+    put :update, { :commit => "Update", :id => @host.name, :host => {:interfaces_attributes => {"0" => {:id => bmc1.id, :password => new_password, :mac => "32:54:00:b0:0c:fd", :updated_at => Time.now, :id => bmc1.id} } } }, set_session_user
+    @host = Host.find(@host.id)
+    assert_equal new_password, @host.interfaces.bmc.first.password
+  end
+
+  # To test Rails bug still exists with accepts_nested_attributes_for and serialized child field
+  test "BMC password does not update due to Rails bug" do
+    bmc1 = @host.interfaces.build(:name => "bmc1", :mac => '52:54:00:b0:0c:fc', :type => 'Nic::BMC',
+                      :ip => '10.0.1.101', :username => 'user1111', :password => 'abc123456', :provider => 'IPMI')
+    assert bmc1.save
+    new_password = "topsecret"
+    put :update, { :commit => "Update", :id => @host.name, :host => {:interfaces_attributes => {"0" => {:id => bmc1.id, :password => new_password} } } }, set_session_user
+    @host = Host.find(@host.id)
+    # assert bug that password was NOT updated to "topsecret" because :password (in serialized attrs field) was the only parameter that changed
+    refute_equal 'topsecret', @host.interfaces.bmc.first.password
+    assert_equal 'abc123456', @host.interfaces.bmc.first.password
+  end
+
+
 
   private
   def initialize_host
@@ -824,7 +868,8 @@ class HostsControllerTest < ActionController::TestCase
                         :environment_id     => environments(:production).id,
                         :subnet_id          => subnets(:one).id,
                         :disk            => "empty partition",
-                        :puppet_proxy_id    => smart_proxies(:puppetmaster).id
+                        :puppet_proxy_id    => smart_proxies(:puppetmaster).id,
+                        :root_pass          => "123456789"
                        )
   end
 end

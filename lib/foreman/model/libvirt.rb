@@ -40,7 +40,7 @@ module Foreman::Model
       16*1024*1024*1024
     end
 
-    def test_connection
+    def test_connection options = {}
       super
       errors[:url].empty? and hypervisor
     rescue => e
@@ -60,11 +60,17 @@ module Foreman::Model
       client.pools rescue []
     end
 
-    def networks
+    def interfaces
       client.interfaces rescue []
     end
 
+    def networks
+      client.networks rescue []
+    end
+
     def new_vm attr={ }
+      test_connection
+      return unless errors.empty?
       opts = vm_instance_defaults.merge(attr.to_hash).symbolize_keys
 
       # convert rails nested_attributes into a plain hash
@@ -94,7 +100,9 @@ module Foreman::Model
       vm = find_vm_by_uuid(uuid)
       raise "VM is not running!" unless vm.ready?
       password = random_password
-      vm.update_display(:password => password, :listen => '0')
+      # Listen address cannot be updated while the guest is running
+      # When we update the display password, we pass the existing listen address
+      vm.update_display(:password => password, :listen => vm.display[:listen])
       WsProxy.start(:host => hypervisor.hostname, :host_port => vm.display[:port], :password => password).merge(:type =>  vm.display[:type].downcase, :name=> vm.name)
     rescue ::Libvirt::Error => e
       if e.message =~ /cannot change listen address/
@@ -113,7 +121,11 @@ module Foreman::Model
 
     def client
       # WARNING potential connection leak
+      tries ||= 3
       Thread.current[url] ||= ::Fog::Compute.new(:provider => "Libvirt", :libvirt_uri => url)
+    rescue ::Libvirt::RetrieveError
+      Thread.current[url] = nil
+      retry unless (tries -= 1).zero?
     end
 
     def disconnect
@@ -127,7 +139,7 @@ module Foreman::Model
         :boot_order => %w[network hd],
         :nics       => [new_nic],
         :volumes    => [new_volume],
-        :display    => { :type => 'vnc', :listen => '0', :password => random_password, :port => '-1' }
+        :display    => { :type => 'vnc', :listen => Setting[:libvirt_default_console_address], :password => random_password, :port => '-1' }
       }
     end
 

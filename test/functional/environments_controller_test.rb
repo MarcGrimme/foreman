@@ -33,7 +33,7 @@ class EnvironmentsControllerTest < ActionController::TestCase
       post :create, {:format => "json", :commit => "Create", :environment => {:name => "some_environment"} }, set_session_user
     end
     env = ActiveSupport::JSON.decode(@response.body)
-    assert env["environment"]["name"] = "some_environment"
+    assert_equal "some_environment", env["environment"]["name"]
     assert_response :created
   end
 
@@ -65,7 +65,7 @@ class EnvironmentsControllerTest < ActionController::TestCase
 
     put :update, { :format => "json", :commit => "Update", :id => environment.name, :environment => {:name => "other_environment"} }, set_session_user
     env = ActiveSupport::JSON.decode(@response.body)
-    assert env["environment"]["name"] = "other_environment"
+    assert_equal "other_environment", env["environment"]["name"]
     env = Environment.find(environment)
     assert env.name == "other_environment"
     assert_response :ok
@@ -97,8 +97,12 @@ class EnvironmentsControllerTest < ActionController::TestCase
   end
 
   def setup_import_classes
-    Puppetclass.delete_all
-    Environment.delete_all
+    as_admin do
+      Host::Managed.update_all(:environment_id => nil)
+      Hostgroup.update_all(:environment_id => nil)
+      Puppetclass.destroy_all
+      Environment.destroy_all
+    end
     @request.env["HTTP_REFERER"] = environments_url
     # This is the database status
     # and should result in a db_tree of {"env1" => ["a", "b", "c"], "env2" => ["a", "b", "c"]}
@@ -134,7 +138,7 @@ class EnvironmentsControllerTest < ActionController::TestCase
         }
       }, set_session_user
     assert_redirected_to environments_url
-    assert flash[:notice] = "Successfully updated environments and puppetclasses from the on-disk puppet installation"
+    assert_equal "Successfully updated environments and puppetclasses from the on-disk puppet installation", flash[:notice]
     assert Environment.find_by_name("env1").puppetclasses.map(&:name).sort == ["a", "b", "c"]
   end
   test "should handle disk environment containing less classes" do
@@ -153,7 +157,7 @@ class EnvironmentsControllerTest < ActionController::TestCase
         }
       }, set_session_user
     assert_redirected_to environments_url
-    assert flash[:notice] = "Succcessfully updated environments and puppetclasses from the on-disk puppet installation"
+    assert_equal "Successfully updated environments and puppetclasses from the on-disk puppet installation", flash[:notice]
     envs = Environment.find_by_name("env1").puppetclasses.map(&:name).sort
     assert envs == ["a", "b", "c"]
   end
@@ -172,7 +176,7 @@ class EnvironmentsControllerTest < ActionController::TestCase
         }
       }, set_session_user
     assert_redirected_to environments_url
-    assert flash[:notice] = "Successfully updated environments and puppetclasses from the on-disk puppet installation"
+    assert_equal "Successfully updated environments and puppetclasses from the on-disk puppet installation", flash[:notice]
     assert Environment.find_by_name("env3").puppetclasses.map(&:name).sort == []
   end
 
@@ -181,6 +185,7 @@ class EnvironmentsControllerTest < ActionController::TestCase
     setup_import_classes
     as_admin do
       host = hosts(:one)
+      Environment.find_by_name("env1").puppetclasses += [puppetclasses(:one)]
       host.environment_id = Environment.find_by_name("env1").id
       assert host.save!
       assert host.errors.empty?
@@ -204,7 +209,7 @@ class EnvironmentsControllerTest < ActionController::TestCase
     setup_import_classes
     as_admin do
       Environment.create :name => "env3"
-      Environment.delete_all(:name => "env2")
+      Environment.find_by_name("env2").destroy
     end
     #db_tree   of {"env1" => ["a", "b", "c"], "env3" => []}
     #disk_tree of {"env1" => ["a", "b", "c"], "env2" => ["a", "b", "c"]}
@@ -212,7 +217,7 @@ class EnvironmentsControllerTest < ActionController::TestCase
     PuppetClassImporter.any_instance.stubs(:ignored_environments).returns(["env1","env2","env3"])
     get :import_environments, {:proxy => smart_proxies(:puppetmaster)}, set_session_user
 
-    assert flash[:notice] == "No changes to your environments detected"
+    assert_equal "No changes to your environments detected", flash[:notice]
   end
 
   def setup_user

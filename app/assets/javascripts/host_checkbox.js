@@ -1,4 +1,5 @@
 // Array contains list of host ids
+$.cookieName = "_ForemanSelected" + window.location.pathname.replace(/\//,"");
 $.foremanSelectedHosts = readFromCookie();
 
 // triggered by a host checkbox change
@@ -8,9 +9,9 @@ function hostChecked(box) {
     addHostId(cid);
   else
     rmHostId(cid);
-  $.cookie("_ForemanSelectedHosts", JSON.stringify($.foremanSelectedHosts));
+  $.cookie($.cookieName, JSON.stringify($.foremanSelectedHosts));
   toggle_actions();
-  update_counter($("span.select_count"));
+  update_counter();
   return false;
 }
 
@@ -27,7 +28,7 @@ function rmHostId(id) {
 
 function readFromCookie() {
   try {
-    if (r = $.cookie("_ForemanSelectedHosts"))
+    if (r = $.cookie($.cookieName))
       return $.parseJSON(r);
     else
       return [];
@@ -57,12 +58,12 @@ $(function() {
       boxes[0].checked = true;
   }
   toggle_actions();
-  update_counter($("span.select_count"));
+  update_counter();
   return false;
 });
 
 function removeForemanHostsCookie() {
-  $.cookie("_ForemanSelectedHosts", null);
+  $.cookie($.cookieName, null);
 }
 
 function resetSelection() {
@@ -77,7 +78,7 @@ function cleanHostsSelection() {
   });
   resetSelection();
   toggle_actions();
-  update_counter($("span.select_count"));
+  update_counter();
   return false;
 }
 
@@ -103,8 +104,8 @@ function toggle_multiple_ok_button(elem){
 // updates the form URL based on the action selection
 $(function() {
   $('#submit_multiple a').click(function(){
-    if ($.foremanSelectedHosts.length == 0) { return false }
-    var title = $(this).attr('data-original-title') + ' - The following hosts are about to be changed';
+    if ($.foremanSelectedHosts.length == 0 || $(this).hasClass('dropdown-toggle')) { return false }
+    var title = $(this).attr('data-original-title');
     var url = $(this).attr('href') + "?" + $.param({host_ids: $.foremanSelectedHosts});
     $('#confirmation-modal .modal-header h3').text(title);
     $('#confirmation-modal .modal-body').empty().append("<img class='modal-loading' src='/assets/spinner.gif'>");
@@ -133,15 +134,19 @@ $(function() {
 
 });
 
-function update_counter(id) {
+function update_counter() {
+  var item = $("#check_all");
   if ($.foremanSelectedHosts) {
-    id.text($.foremanSelectedHosts.length);
-    $("#check_all").attr("checked", $.foremanSelectedHosts.length > 0 );
+    $(".select_count").text($.foremanSelectedHosts.length);
+    item.attr("checked", $.foremanSelectedHosts.length > 0 );
   }
-
-  if ($("#check_all").attr("checked"))
-    $("#check_all").attr("title", $.foremanSelectedHosts.length + " - items selected.\nUncheck to Clear Selection" );
+  var title = "";
+  if (item.attr("checked"))
+    title = $.foremanSelectedHosts.length + " - " + item.attr("uncheck-title");
   else
-    $("#check_all").attr("title", "Select all items in this page" );
+    title = item.attr("check-title");
+
+  item.attr("data-original-title", title );
+  item.tooltip();
   return false;
 }

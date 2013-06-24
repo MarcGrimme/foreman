@@ -4,7 +4,7 @@
   <tr>
     <th><%= sort :key, :as => _("Variable") %></th>
     <th><%= sort :puppetclass, :as => _("Puppetclass") %></th>
-    <th><%= _('Number of Values') -%></th>
+    <th><%= _('Number of values') -%></th>
     <th></th>
   </tr>
 
@@ -18,5 +18,5 @@
   </tr>
 <% end %>
 </table>
-<%= page_entries_info @lookup_keys, :model => "Smart Variables"%>
+<%= page_entries_info @lookup_keys %>
 <%= will_paginate     @lookup_keys %>

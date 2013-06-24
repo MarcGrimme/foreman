@@ -4,7 +4,7 @@ $(function() {
     var url = $(this).attr('data-url');
     $(this).load(url + ' table', function(response, status, xhr) {
       if (status == "error") {
-        $(this).closest(".tab-content").find("#spinner").html("There was an error listing VM's : " + xhr.status + " " + xhr.statusText);
+        $(this).closest(".tab-content").find("#spinner").html(Jed.sprintf(_("There was an error listing VMs: %(status)s %(statusText)s"), {status: xhr.status, statusText: xhr.statusText}));
       }
       $('.dropdown-toggle').dropdown();
       onContentLoad();
@@ -26,18 +26,22 @@ function providerSelected(item)
 }
 
 function testConnection(item) {
-
+  var cr_id = $("form").data('id');
+  var password = $("input[id$='password']").val();
+  $('.tab-error').removeClass('tab-error');
   $('#test_connection_indicator').show();
   $.ajax({
     type:'put',
     url: $(item).attr('data-url'),
-    data: $('form').serialize(),
+    data: $('form').serialize() + '&cr_id=' + cr_id,
     success:function (result) {
       var res = $('<div>' + result + '</div>');
       $('#compute_connection').html(res.find("#compute_connection"));
       $('#compute_connection').prepend(res.find(".alert-message"));
     },
     complete:function (result) {
+      //we need to restore the password field as it is not sent back from the server.
+      $("input[id$='password']").val(password);
       $('#test_connection_indicator').hide();
       $('[rel="twipsy"]').tooltip();
     }
@@ -47,8 +51,7 @@ function testConnection(item) {
 function ovirt_hwpSelected(item){
   var hwp = $(item).val();
   var url = $(item).attr('data-url');
-
-  $('#hwp_indicator').show();
+  $(item).indicator_show();
   $.ajax({
       type:'post',
       url: url,
@@ -61,8 +64,8 @@ function ovirt_hwpSelected(item){
         $('#volumes').children('.fields').remove();
         $.each(result.volumes, function() {add_volume(this);});
       },
-      complete: function(result){
-        $('#hwp_indicator').hide();
+      complete: function(){
+        $(item).indicator_hide();
         $('[rel="twipsy"]').tooltip();
       }
     })
@@ -138,7 +141,7 @@ function bootable_radio(item){
 function ovirt_clusterSelected(item){
   var cluster = $(item).val();
   var url = $(item).attr('data-url');
-  $('#cluster_indicator').show();
+  $(item).indicator_show();
   $.ajax({
       type:'post',
       url: url,
@@ -149,10 +152,42 @@ function ovirt_clusterSelected(item){
           network_options.append($("<option />").val(this.id).text(this.name));
         });
       },
-      complete: function(result){
-        $('#cluster_indicator').hide();
+      complete: function(){
+        $(item).indicator_hide();
         $('[rel="twipsy"]').tooltip();
       }
     })
 }
 
+function libvirt_network_selected(item){
+  selected = $(item).val();
+  dropdown = $(item).closest('select');
+  bridge   = $(item).parentsUntil('.fields').parent().find('#bridge');
+  nat      = $(item).parentsUntil('.fields').parent().find('#nat');
+  switch (selected) {
+    case '':
+      disable_libvirt_dropdown(bridge);
+      disable_libvirt_dropdown(nat);
+      break;
+    case 'network':
+      disable_libvirt_dropdown(bridge);
+      enable_libvirt_dropdown(nat);
+      break;
+    case 'bridge':
+      disable_libvirt_dropdown(nat);
+      enable_libvirt_dropdown(bridge);
+      break;
+  }
+  return false;
+}
+
+function disable_libvirt_dropdown(item){
+  item.hide();
+  item.attr("disabled",true);
+}
+
+function enable_libvirt_dropdown(item){
+  item.attr("disabled",false);
+  item.find(':input').attr('disabled',false)
+  item.show();
+}

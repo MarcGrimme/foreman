@@ -9,7 +9,7 @@ $(function () {
   var password = $('#spice-area').data('password');
 
   if ((!host) || (!port)) {
-    console.log("must set host and port");
+    console.log(_("must set host and port"));
     return;
   }
 
@@ -30,7 +30,7 @@ function spice_error(e) {
 }
 
 function spice_success(m) {
-  $('#spice-status').text($('#spice-status').text().replace('Connecting','Connected'));
+  $('#spice-status').text(Jed.sprintf(_('Connected (unencrypted) to: %s'), $('#spice-status').attr('data-host')))
   $('#spice-status').addClass('label-success');
 }
 
@@ -43,9 +43,9 @@ function connectXPI() {
   disconnect();
   var pluginobj = document.embeds[0];
   pluginobj.hostIP = attrs.data('address');
-  pluginobj.SecurePort = attrs.data('secure_port');
+  pluginobj.SecurePort = attrs.data('secure-port');
   pluginobj.Password = attrs.data('password');
-  pluginobj.TrustStore = decodeURIComponent(attrs.data('ca_cert'));
+  pluginobj.TrustStore = decodeURIComponent(attrs.data('ca-cert'));
   pluginobj.SSLChannels = String("all");
   pluginobj.fullScreen = false;
   pluginobj.Title = attrs.data('title');

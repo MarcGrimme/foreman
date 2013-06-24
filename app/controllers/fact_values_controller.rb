@@ -1,5 +1,3 @@
-require 'foreman/controller/smart_proxy_auth'
-
 class FactValuesController < ApplicationController
   include Foreman::Controller::AutoCompleteSearch
   include Foreman::Controller::SmartProxyAuth
@@ -51,7 +49,7 @@ class FactValuesController < ApplicationController
       logger.debug "Creating host of type: #{params[:type]}"
       return params[:type].constantize
     else
-      raise ::Foreman::Exception(N_("Invalid type requested for host creation via facts: %s"), params[:type])
+      raise ::Foreman::Exception.new(N_("Invalid type requested for host creation via facts: %s"), params[:type])
     end
   rescue => e
       logger.warn _("A problem occurred when detecting host type: %s") % (e.message)

@@ -1,10 +1,10 @@
-require 'foreman/controller/environments'
-
 class PuppetclassesController < ApplicationController
   include Foreman::Controller::Environments
   include Foreman::Controller::AutoCompleteSearch
   before_filter :find_by_name, :only => [:edit, :update, :destroy, :assign]
   before_filter :setup_search_options, :only => :index
+  before_filter :reset_redirect_to_url, :only => :index
+  before_filter :store_redirect_to_url, :only => :edit
 
   def index
     begin
@@ -44,7 +44,7 @@ class PuppetclassesController < ApplicationController
   def update
     if @puppetclass.update_attributes(params[:puppetclass])
       notice _("Successfully updated puppetclass.")
-      redirect_to puppetclasses_url
+      redirect_back_or_default(puppetclasses_url)
     else
       render :action => 'edit'
     end
@@ -62,7 +62,10 @@ class PuppetclassesController < ApplicationController
   # form AJAX methods
   def parameters
     puppetclass = Puppetclass.find(params[:id])
-    render :partial => "puppetclasses/class_parameters", :locals => {:klass => puppetclass, :host => refresh_host}
+    obj = params['host'] ? refresh_host : refresh_hostgroup
+    render :partial => "puppetclasses/class_parameters", :locals => {
+        :puppetclass => puppetclass,
+        :obj => obj}
   end
 
   private
@@ -76,9 +79,32 @@ class PuppetclassesController < ApplicationController
       end
       @host.attributes = params['host']
     else
-      @host ||= Host::Managed.new(params['host'])
+      @host = Host::Managed.new(params['host'])
     end
-    return @host
+    @host
+  end
+
+  def refresh_hostgroup
+    @hostgroup = Hostgroup.find_by_id(params['host_id'])
+    if @hostgroup
+      @hostgroup.attributes = params['hostgroup']
+    else
+      @hostgroup = Hostgroup.new(params['hostgroup'])
+    end
+    @hostgroup
+  end
+
+  def reset_redirect_to_url
+    session[:redirect_to_url] = nil
+  end
+
+  def store_redirect_to_url
+    session[:redirect_to_url] ||= request.referer
+  end
+
+  def redirect_back_or_default(default)
+    redirect_to(session[:redirect_to_url] || default)
+    session[:redirect_to_url] = nil
   end
 
 

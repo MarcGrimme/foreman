@@ -1,6 +1,7 @@
 module Foreman::Model
   class EC2 < ComputeResource
-    has_one :key_pair, :foreign_key => :compute_resource_id
+    has_one :key_pair, :foreign_key => :compute_resource_id, :dependent => :destroy
+
 
     validates_presence_of :user, :password
     after_create :setup_key_pair
@@ -38,6 +39,7 @@ module Foreman::Model
         iam_hash = image.iam_role.present? ? {:iam_instance_profile_name => image.iam_role} : {}
         args.merge!(iam_hash)
       end
+      args[:groups].reject!(&:empty?) if args.has_key?(:groups)
       super(args)
     end
 
@@ -58,9 +60,9 @@ module Foreman::Model
       client.flavors
     end
 
-    def test_connection
+    def test_connection options = {}
       super
-      errors[:user].empty? and errors[:password] and regions
+      errors[:user].empty? and errors[:password].empty? and regions
     rescue Fog::Compute::AWS::Error => e
       errors[:base] << e.message
     end
