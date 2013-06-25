@@ -1,3 +1,3 @@
-group :postgresql do
-  gem 'pg'
-end
+#group :postgresql do
+#  gem 'pg'
+#end

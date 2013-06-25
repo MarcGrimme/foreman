@@ -1,3 +1,3 @@
-group :mysql do
-  gem 'mysql'
-end
+#group :mysql do
+#  gem 'mysql'
+#end

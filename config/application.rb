@@ -46,6 +46,7 @@ module Foreman
     # config.autoload_paths += %W(#{config.root}/extras)
     config.autoload_paths += Dir["#{config.root}/lib"]
     config.autoload_paths += Dir["#{config.root}/app/controllers/concerns"]
+    config.autoload_paths += Dir["/home/marc/src/ruby/fog/lib"]
     config.autoload_paths += Dir[ Rails.root.join('app', 'models', 'power_manager') ]
 
     # Only load the plugins named here, in the order given (default is alphabetical).
