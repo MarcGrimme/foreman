@@ -190,13 +190,12 @@ module Foreman::Model
     end
 
     def vm_instance_defaults
-      {
+      super.merge(
         :memory_mb  => 768,
         :interfaces => [new_interface],
         :volumes    => [new_volume],
-        :datacenter => datacenter,
-        :guest_id   => "otherGuest64"
-      }.merge(super)
+        :datacenter => datacenter
+      )
     end
 
   end
