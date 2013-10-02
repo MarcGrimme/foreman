@@ -6,4 +6,6 @@ group :development do
 
   # for generating i18n files
   gem 'gettext', '>= 1.9.3', :require => false
+  gem 'better_errors'
+  gem 'binding_of_caller'
 end
